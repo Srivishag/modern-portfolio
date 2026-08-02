@@ -1,26 +1,326 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-bg: #030712;
+  --color-glass: rgba(12, 18, 28, 0.52);
+  --color-primary: #00f5c3;
+  --color-secondary: #00d9ff;
+  --color-accent: #8b5cf6;
+  --color-muted: #94a3b8;
+  --color-border-glow: rgba(0, 255, 210, 0.2);
+  /* --font-display / --font-body / --font-mono are injected by next/font on
+     the <html> element (see layout.tsx) — not redeclared here. */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-bg);
+  color-scheme: dark;
+  scroll-behavior: auto; /* Lenis drives smoothing; native smooth-scroll would fight it */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--color-bg);
+  color: #e6e8ef;
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  cursor: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  body {
+    cursor: auto;
+  }
+}
+
+::selection {
+  background: var(--color-primary);
+  color: #030712;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ---------- Reels-style paging on touch ----------
+   Lenis is disabled on coarse pointers, so native scroll-snap owns the gesture:
+   one flick = exactly one section, and it can't skip past one. */
+@media (pointer: coarse) {
+  html {
+    scroll-snap-type: y mandatory;
+  }
+  [data-mode],
+  [data-snap-end] {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 245, 195, 0.25);
+  border-radius: 999px;
+}
+
+.text-glow {
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ---------- Hologram glass panel ---------- */
+.hud-panel {
+  position: relative;
+  background: var(--color-glass);
+  border: 1px solid var(--color-border-glow);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    0 0 0 1px rgba(0, 245, 195, 0.05) inset,
+    0 0 60px -12px rgba(0, 245, 195, 0.25),
+    0 30px 80px -30px rgba(0, 0, 0, 0.7);
+  isolation: isolate;
+}
+
+.hud-panel::before {
+  /* scan lines */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 245, 195, 0.035) 0px,
+    rgba(0, 245, 195, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: screen;
+  border-radius: inherit;
+}
+
+.hud-panel::after {
+  /* noise + vignette */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+.hud-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to bottom, transparent, rgba(0, 245, 195, 0.16), transparent);
+  animation: hud-scan-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes hud-scan-sweep {
+  0% { top: -40%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.hud-border-anim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    transparent 0%,
+    var(--color-primary) 8%,
+    transparent 20%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: hud-border-rotate 4s linear infinite;
+}
+
+@keyframes hud-border-rotate {
+  to { --border-angle: 360deg; }
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.hud-flicker {
+  animation: hud-flicker-in 0.6s steps(1, end);
+}
+
+@keyframes hud-flicker-in {
+  0% { opacity: 0; }
+  6% { opacity: 0.6; }
+  12% { opacity: 0.1; }
+  20% { opacity: 0.8; }
+  28% { opacity: 0.25; }
+  42% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* ---------- Atmosphere background ---------- */
+.atmo-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(0, 245, 195, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 245, 195, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  animation: atmo-grid-drift 40s linear infinite;
+  mask-image: radial-gradient(ellipse 80% 70% at 30% 40%, black 20%, transparent 100%);
+}
+
+@keyframes atmo-grid-drift {
+  from { background-position: 0 0; }
+  to { background-position: 64px 64px; }
+}
+
+.atmo-fog {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.atmo-fog::before,
+.atmo-fog::after {
+  content: "";
+  position: absolute;
+  width: 60vw;
+  height: 60vw;
+  max-width: 760px;
+  max-height: 760px;
+  border-radius: 9999px;
+  filter: blur(120px);
+  will-change: transform;
+}
+.atmo-fog::before {
+  background: radial-gradient(circle, rgba(0, 217, 255, 0.16), transparent 70%);
+  top: -10%;
+  left: -10%;
+  animation: atmo-fog-a 30s ease-in-out infinite;
+}
+.atmo-fog::after {
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.14), transparent 70%);
+  bottom: -15%;
+  right: -10%;
+  animation: atmo-fog-b 36s ease-in-out infinite;
+}
+
+/* Translate only — animating scale on a blur(120px) surface forces the
+   compositor to re-rasterize the whole blurred layer every frame. */
+@keyframes atmo-fog-a {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(5vw, 6vh, 0); }
+}
+@keyframes atmo-fog-b {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-6vw, -5vh, 0); }
+}
+
+.atmo-particle {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 6px 1px currentColor;
+  color: var(--color-primary);
+  animation-name: atmo-particle-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes atmo-particle-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: var(--p-op, 0.5); }
+  50% { transform: translate3d(var(--p-dx, 10px), var(--p-dy, -24px), 0); opacity: calc(var(--p-op, 0.5) * 0.6); }
+}
+
+.scroll-cue-bob {
+  animation: scroll-cue-bob 1.8s ease-in-out infinite;
+}
+@keyframes scroll-cue-bob {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(4px); opacity: 1; }
+}
+
+/* ---------- Transition scan flash ---------- */
+.scan-flash-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), var(--color-secondary), transparent);
+  box-shadow: 0 0 24px 6px var(--color-primary);
+  animation: scan-flash-sweep 0.6s ease-out forwards;
+}
+
+@keyframes scan-flash-sweep {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ---------- Neural network (AI Core) ---------- */
+.nn-line {
+  stroke-dasharray: 4 6;
+  animation: nn-flow 3s linear infinite;
+}
+@keyframes nn-flow {
+  to { stroke-dashoffset: -40; }
+}
+
+.nn-node {
+  filter: drop-shadow(0 0 3px currentColor);
+  animation: nn-pulse 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes nn-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-scanline,
+  .hud-border-anim,
+  .hud-flicker,
+  .atmo-grid,
+  .atmo-fog::before,
+  .atmo-fog::after,
+  .atmo-particle,
+  .nn-line,
+  .nn-node,
+  .scroll-cue-bob {
+    animation: none !important;
+  }
 }
