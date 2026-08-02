@@ -1,19 +1,33 @@
 "use client"
 
-import { Suspense, lazy } from "react"
-import { Canvas } from "@react-three/fiber"
+import { Suspense, lazy, useRef } from "react"
+import { Canvas, useFrame } from "@react-three/fiber"
 import { Device } from "./Device"
 
 const Effects = lazy(() => import("./Effects").then((m) => ({ default: m.Effects })))
+
+/** Fires once the WebGL context has actually rendered a frame — the real
+ * "the device is on screen" signal, as opposed to just the JS chunk loading. */
+function ReadySignal({ onReady }: { onReady?: () => void }) {
+  const fired = useRef(false)
+  useFrame(() => {
+    if (fired.current) return
+    fired.current = true
+    onReady?.()
+  })
+  return null
+}
 
 export function DeviceScene({
   pointer,
   reducedMotion,
   lowPower = false,
+  onFirstFrame,
 }: {
   pointer: React.RefObject<{ x: number; y: number }>
   reducedMotion: boolean
   lowPower?: boolean
+  onFirstFrame?: () => void
 }) {
   return (
     <Canvas
@@ -27,6 +41,7 @@ export function DeviceScene({
       <pointLight position={[0, 0.5, 6]} intensity={0.7} color="#ffffff" />
 
       <Device pointer={pointer} reducedMotion={reducedMotion} />
+      <ReadySignal onReady={onFirstFrame} />
 
       {!reducedMotion && !lowPower && (
         <Suspense fallback={null}>

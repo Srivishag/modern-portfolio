@@ -3,15 +3,23 @@ function seeded(i: number, salt: number) {
   return x - Math.floor(x)
 }
 
+// Rounded to 4 decimals: full float precision (15+ digits) can come out of
+// server vs. client CSS serialization with a differing number of digits,
+// which React's hydration check flags as a mismatch even though the visual
+// result is identical. Short, fixed-precision strings can't drift.
+function round(n: number) {
+  return Math.round(n * 10000) / 10000
+}
+
 const PARTICLES = Array.from({ length: 42 }, (_, i) => ({
-  left: seeded(i, 1) * 100,
-  top: seeded(i, 2) * 100,
-  size: 1 + seeded(i, 3) * 2.2,
-  duration: 9 + seeded(i, 4) * 16,
-  delay: -seeded(i, 5) * 20,
-  opacity: 0.2 + seeded(i, 6) * 0.45,
-  dx: (seeded(i, 7) - 0.5) * 40,
-  dy: -20 - seeded(i, 8) * 30,
+  left: round(seeded(i, 1) * 100),
+  top: round(seeded(i, 2) * 100),
+  size: round(1 + seeded(i, 3) * 2.2),
+  duration: round(9 + seeded(i, 4) * 16),
+  delay: round(-seeded(i, 5) * 20),
+  opacity: round(0.2 + seeded(i, 6) * 0.45),
+  dx: round((seeded(i, 7) - 0.5) * 40),
+  dy: round(-20 - seeded(i, 8) * 30),
 }))
 
 /** Ambient background: moving grid, drifting fog, floating dust particles. */

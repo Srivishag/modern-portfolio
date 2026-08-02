@@ -29,7 +29,7 @@ function DevicePlaceholder() {
  * Fixed, always-visible host for the 3D wearable device. Sits left-center on
  * desktop per the layout spec; the canvas itself never scrolls.
  */
-export function DeviceCanvas() {
+export function DeviceCanvas({ onReady }: { onReady?: () => void }) {
   const reducedMotion = useReducedMotion()
   const lowPower = useLowPowerDevice()
   const pointer = useRef({ x: 0, y: 0 })
@@ -56,7 +56,7 @@ export function DeviceCanvas() {
       aria-hidden="true"
     >
       <div className="w-full h-full max-h-[640px]">
-        <DeviceScene pointer={pointer} reducedMotion={reducedMotion} lowPower={lowPower} />
+        <DeviceScene pointer={pointer} reducedMotion={reducedMotion} lowPower={lowPower} onFirstFrame={onReady} />
       </div>
     </div>
   )
